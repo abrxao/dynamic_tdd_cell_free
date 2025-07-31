@@ -1,8 +1,8 @@
 import tensorflow as tf
-
+import numpy as np
 
 # to uplink and downlink
-def getSINR(channel: tf.Tensor, power: tf.Tensor, noise: tf.Tensor) -> tf.Tensor:
+def getSINR(main_dir_channel: tf.Tensor, other_dir_channel: tf.Tensor, main_power: tf.Tensor, other_power: tf.Tensor, noise: tf.Tensor) -> tf.Tensor:
     """
     Calculate the Signal-to-Interference-plus-Noise Ratio (SINR).
 
@@ -14,18 +14,18 @@ def getSINR(channel: tf.Tensor, power: tf.Tensor, noise: tf.Tensor) -> tf.Tensor
     Returns:
         tf.Tensor: The SINR value.
     """
-    sinr = tf.Variable(tf.zeros_like(channel, dtype=tf.float32))
+    num = np.zeros((main_dir_channel.shape[0], main_dir_channel.shape[2]))
+    den = np.zeros((main_dir_channel.shape[0], main_dir_channel.shape[2]))
     # Calculating Norm of the channel
-
-    for idx, ue_channel in enumerate(channel):
-        # Removing values of index idx from the channel
-        channel_without_idx = tf.concat([channel[:idx], channel[idx + 1 :]], axis=0)
-        # Calculating the interference for the current user
-        interference = tf.reduce_sum(channel_without_idx * power, axis=0)
-        sinr[idx].assign(
-            power * ue_channel / (interference + noise * tf.norm(channel) ** 2)
-        )
-    return sinr
+    for k in range(main_dir_channel.shape[0]):
+        for j in range(main_dir_channel.shape[0]):
+            for t in range(main_dir_channel.shape[2]):
+                #for a in range(main_dir_channel.shape[2]):
+                # var auxiliar para checar index do usuario
+                num[k, t] += np.sum(np.abs(main_dir_channel[k, :, t])*main_power)**2
+                den[k, t] += np.sum(k!=j*np.abs(main_dir_channel[j, :, t])*main_power)**2 + np.sum(np.abs(other_dir_channel[k, :, t])*other_power)**2 + noise**2
+                
+    return  num, den
 
 
 def spectralEfficiency(sinr: tf.Tensor) -> tf.Tensor:
